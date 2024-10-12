@@ -114,6 +114,7 @@ class GOE:
             if key not in self.initial_set:
                 self.initial_set[key] = self.default_parameter_values[self.parameter_types[key]]
 
+        self.print_progress = print_progress
         # initializing the log file, if needed
         self.log_file = None
         if log_dir is not None:
@@ -127,10 +128,17 @@ class GOE:
         self.num_agents = num_agents
         self.num_workers = num_workers if num_workers != -1 else os.cpu_count()
 
+        self.agents = None
+        self.fitness = None
+
+        self.best_agent = None
+        self.best_fitness = None
+
+    def initialize_agents(self):
         # initializing the first set of agents
         self.agents = [self._mutate(self.initial_set, mutation_probability=1) for _ in range(self.num_agents)]
 
-        if print_progress:
+        if self.print_progress:
             print('Initialization done, evaluating initial agents...')
         if self.log_file:
             with open(self.log_file, 'w') as f:
@@ -160,7 +168,7 @@ class GOE:
             self.fitness = [self._evaluate(agent) for agent in self.agents]
 
         end_time = time()
-        if print_progress:
+        if self.print_progress:
             print(f'Initialization done, took {end_time - start_time:.2f} seconds')
         if self.log_file:
             with open(self.log_file, 'a') as f:
@@ -169,7 +177,8 @@ class GOE:
                     f.write(f'Agent: {agent}, Fitness: {fitness}\n')
                 f.write('\n\n')
 
-        if print_progress:
+    def run_evolution(self):
+        if self.print_progress:
             print('Starting the genetic algorithm...')
         if self.log_file:
             with open(self.log_file, 'a') as f:
@@ -216,7 +225,7 @@ class GOE:
                 self.best_agent = self.agents[np.argmin(self.fitness)]
                 self.best_fitness = np.min(self.fitness)
 
-            if print_progress:
+            if self.print_progress:
                 print(f'Generation {i + 1}/{self.num_generations} done, best fitness: {self.best_fitness}, '
                       f'best agent: {self.best_agent}\n'
                       f'It took {end_time - start_time:.2f} seconds\n')
@@ -228,13 +237,6 @@ class GOE:
                     for agent, fitness in zip(self.agents, self.fitness):
                         f.write(f'Agent: {agent}, Fitness: {fitness}\n')
                     f.write('\n\n')
-
-        if self.maximize:
-            self.best_agent = self.agents[np.argmax(self.fitness)]
-            self.best_fitness = np.max(self.fitness)
-        else:
-            self.best_agent = self.agents[np.argmin(self.fitness)]
-            self.best_fitness = np.min(self.fitness)
 
     @staticmethod
     def _identity_projection(value):
