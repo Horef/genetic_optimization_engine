@@ -333,17 +333,3 @@ class GOE:
 
     def get_best_agent(self) -> (dict, float):
         return (self.best_agent, self.best_fitness)
-
-def fitness_wrapper(func: callable) -> callable:
-    """
-    Used to wrap a generic function to be used as a fitness function for the Genetic Optimization Engine.
-
-    :param func: function to evaluate the fitness of the agents. All of its parameters should be keyword arguments.
-    :return: function that receives a dictionary of the form {parameter_name: value} for each parameter.
-    And calls the original function with the parameters as keyword arguments.
-    """
-
-    def fitness(parameters: dict) -> float:
-        return func(**parameters)
-
-    return fitness
