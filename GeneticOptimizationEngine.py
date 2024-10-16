@@ -30,7 +30,7 @@ class GOE:
 
         :param parameter_types: dictionary of form: {parameter_name: type}, where type is one of 'int', 'float', 'bool'
             or 'choice'. The 'choice' type should be used when the parameter can take a finite and discrete set of values.
-            If possible, one of the other types should be used, as the 'choice' type is less efficient.
+            If 'choice' is used, the initial_set should contain a list of possible values for that parameter.
 
         :param maximize: if True, the genetic algorithm will try to maximize the fitness function, otherwise it will
             try to minimize it. True by default.
@@ -68,8 +68,9 @@ class GOE:
         if seed:
             np.random.seed(seed)
 
+        self.flags = {'maximize': maximize}
+
         self.fitness_function = fitness_function
-        self.maximize = maximize
         self.parameter_types = parameter_types
         # type checking
         for key in self.parameter_types.keys():
@@ -234,7 +235,7 @@ class GOE:
                 self.fitness = [self._evaluate(agent) for agent in self.agents]
 
             end_time = time()
-            if self.maximize:
+            if self.flags['maximize']:
                 self.last_best_agent = self.agents[np.argmax(self.fitness)]
                 self.last_best_fitness = np.max(self.fitness)
                 if self.best_fitness is None or self.last_best_fitness > self.best_fitness:
@@ -344,7 +345,7 @@ class GOE:
         """
         values = np.array(values)
         # flipping the values, if the genetic algorithm is set to minimize the fitness
-        if not self.maximize:
+        if not self.flags['maximize']:
             values = -values
         # finding the average value
         scale = (np.max(values)-np.mean(values))/len(values)
@@ -430,3 +431,20 @@ class GOE:
         :return: tuple of the form (best_agent, best_fitness)
         """
         return (self.best_agent, self.best_fitness)
+
+    @staticmethod
+    def list_to_dict(keys: list, types: list = None, const_type = None):
+        """
+        If there are many keys with the same type, this function can be used to create a dictionary of the form
+        {key: type} to be later passed to the GOE.
+        :param keys: keys to create the dictionary from.
+        :param types: list of types to assign to the keys. If None, uses the s_type parameter for all keys.
+        :param const_type: in case all keys are of the same type, this parameter can be used to specify that type.
+        :raises: ValueError if both types and s_type are None.
+        :return: dictionary of the form {key: type}.
+        """
+        if not types and not const_type:
+            raise ValueError('Either types or s_type should be provided')
+        if not types:
+            types = [const_type for _ in keys]
+        return {key: type_ for key, type_ in zip(keys, types)}
