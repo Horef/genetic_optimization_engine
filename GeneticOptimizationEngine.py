@@ -30,7 +30,8 @@ class GOE:
 
         :param parameter_types: dictionary of form: {parameter_name: type}, where type is one of 'int', 'float', 'bool'
             or 'choice'. The 'choice' type should be used when the parameter can take a finite and discrete set of values.
-            If 'choice' is used, the initial_set should contain a list of possible values for that parameter.
+            If 'choice' is used, a default mutation function should be provided for that parameter. GOE.choice_mutation
+            can be used to create such a function.
 
         :param maximize: if True, the genetic algorithm will try to maximize the fitness function, otherwise it will
             try to minimize it. True by default.
@@ -275,6 +276,7 @@ class GOE:
         Default mutation function used when no mutation is provided.
         :param parameter_type: type of the value that is being mutated.
         :param value: value to mutate.
+        :raises: ValueError if the parameter_type is not supported by the default mutation.
         :return: mutated value.
         """
         if parameter_type == int:
@@ -282,10 +284,23 @@ class GOE:
         elif parameter_type == float:
             return np.random.normal(value, self.variability)
         elif parameter_type == 'choice':
-            return np.random.choice(self.initial_set[parameter_type])
+            raise ValueError('Choice mutation should be provided for choice parameters')
         else:
             # the only way to mutate a boolean is to flip it
             return not value
+
+    @staticmethod
+    def choice_mutation(choices):
+        """
+        Returns a function that mutates the choice parameter.
+        :param choices: a list of possible choices.
+        :return: function that mutates the choice parameter.
+        """
+        def _choice_mutation(parameter_type, value):
+            # randomly choosing a new value from the list of choices, excluding the current value
+            new_choices = [choice for choice in choices if choice != value]
+            return np.random.choice(new_choices)
+        return _choice_mutation
 
     def _mutate(self, agent, mutation_probability=None):
         """
