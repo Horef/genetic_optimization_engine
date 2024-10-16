@@ -6,7 +6,7 @@ from time import time
 from multiprocessing_helpers import DillProcess
 
 class GOE:
-    default_parameter_values = {int: 0, float: 0.0, bool: False}
+    default_parameter_values = {int: 0, float: 0.0, bool: False, list: [0.0], 'choice': [0]}
 
     def __init__(self, fitness_function: callable,
                  parameter_types: dict,
@@ -26,38 +26,38 @@ class GOE:
         Used to initialize the Genetic Optimization Engine.
 
         :param fitness_function: function to evaluate the fitness of the agents. It should accept a single parameter,
-        a dictionary of the form {parameter_name: value} for each parameter.
+            a dictionary of the form {parameter_name: value} for each parameter.
 
         :param parameter_types: dictionary of form: {parameter_name: type}, where type is one of 'int', 'float', 'bool'
-        or 'choice'. The 'choice' type should be used when the parameter can take a finite and discrete set of values.
-        If possible, one of the other types should be used, as the 'choice' type is less efficient.
+            or 'choice'. The 'choice' type should be used when the parameter can take a finite and discrete set of values.
+            If possible, one of the other types should be used, as the 'choice' type is less efficient.
 
         :param maximize: if True, the genetic algorithm will try to maximize the fitness function, otherwise it will
-        try to minimize it. True by default.
+            try to minimize it. True by default.
 
         :param parameter_mutations: dictionary of functions to use when mutating parameters. If None, defaults to mutation with
-        a normal distribution with mean of previous value, and standard deviation of 25% of the previous value
+            a normal distribution with mean of previous value, and standard deviation of 25% of the previous value
 
         :param seed: seed value in case you want to reproduce the results
 
         :param projections: if the parameters need to be in a certain range, this dictionary should contain functions that
-        will be applied to the parameters before evaluation. If None, defaults to identity function
+            will be applied to the parameters before evaluation. If None, defaults to identity function
 
         :param initial_set: dictionary of functions to randomly initiate the parameters. If None,
-        uses mutation upon default values for each parameter.
+            uses mutation upon default values for each parameter.
 
         :param scaler: function to scale the fitness of the agents.
-        If None, scales the fitness to be positive, and such that the minimal value will be zero,
-        also adds a scale value, which is the difference between the maximal and the average fitness,
-        divided by the number of agents.
-        Additionally, scaler flips the fitness values, in case the genetic algorithm is set to minimize the fitness.
+            If None, scales the fitness to be positive, and such that the minimal value will be zero,
+            also adds a scale value, which is the difference between the maximal and the average fitness,
+            divided by the number of agents.
+            Additionally, scaler flips the fitness values, in case the genetic algorithm is set to minimize the fitness.
 
         :param mutation_probability: probability of mutation for each parameter.
         :param crossover_probability: probability of crossover between two chosen agents.
         :param dr: decay rate of the variability of the mutation. The variability is multiplied by (1 - dr) after each
-        generation.
+            generation.
         :param variability: initial variability of the mutation. The mutation is a normal distribution with mean of the
-        previous value, and standard deviation of variability * value.
+            previous value, and standard deviation of variability * value.
         :param num_generations: number of epochs to run the genetic algorithm
         :param num_agents: number of agents to train for each epoch
         :param num_workers: number of workers to use for parallel processing. If -1, defaults to number of cores
@@ -139,6 +139,11 @@ class GOE:
         self.last_best_fitness = None
 
     def initialize_agents(self):
+        """
+        Initializes the agents for the genetic algorithm.
+        :return: nothing, instead it updates the agents and their fitness.
+        """
+
         # initializing the first set of agents
         self.agents = [self._mutate(self.initial_set, mutation_probability=1) for _ in range(self.num_agents)]
         self.agents = [self._project(agent) for agent in self.agents]
