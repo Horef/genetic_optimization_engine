@@ -134,7 +134,9 @@ class GOE:
         self.fitness = None
 
         self.best_agent = None
+        self.last_best_agent = None
         self.best_fitness = None
+        self.last_best_fitness = None
 
     def initialize_agents(self):
         # initializing the first set of agents
@@ -228,20 +230,26 @@ class GOE:
 
             end_time = time()
             if self.maximize:
-                self.best_agent = self.agents[np.argmax(self.fitness)]
-                self.best_fitness = np.max(self.fitness)
+                self.last_best_agent = self.agents[np.argmax(self.fitness)]
+                self.last_best_fitness = np.max(self.fitness)
+                if self.best_fitness is None or self.last_best_fitness > self.best_fitness:
+                    self.best_agent = self.last_best_agent
+                    self.best_fitness = self.last_best_fitness
             else:
-                self.best_agent = self.agents[np.argmin(self.fitness)]
-                self.best_fitness = np.min(self.fitness)
+                self.last_best_agent = self.agents[np.argmin(self.fitness)]
+                self.last_best_fitness = np.min(self.fitness)
+                if self.best_fitness is None or self.last_best_fitness < self.best_fitness:
+                    self.best_agent = self.last_best_agent
+                    self.best_fitness = self.last_best_fitness
 
             if self.print_progress:
-                print(f'Generation {i + 1}/{self.num_generations} done, best fitness: {self.best_fitness}, '
-                      f'best agent: {self.best_agent}\n'
+                print(f'Generation {i + 1}/{self.num_generations} done, best fitness: {self.last_best_fitness}, '
+                      f'best agent: {self.last_best_agent}\n'
                       f'It took {end_time - start_time:.2f} seconds\n')
             if self.log_file:
                 with open(self.log_file, 'a') as f:
-                    f.write(f'Generation {i + 1}/{self.num_generations} done, best fitness: {self.best_fitness}, '
-                            f'best agent: {self.best_agent}\n'
+                    f.write(f'Generation {i + 1}/{self.num_generations} done, best fitness: {self.last_best_fitness}, '
+                            f'best agent: {self.last_best_agent}\n'
                             f'It took {end_time - start_time:.2f} seconds\n')
                     for agent, fitness in zip(self.agents, self.fitness):
                         f.write(f'Agent: {agent}, Fitness: {fitness}\n')
