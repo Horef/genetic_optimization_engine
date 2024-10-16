@@ -76,6 +76,8 @@ class GOE:
             if self.parameter_types[key] not in self.default_parameter_values.keys():
                 raise ValueError(f'Parameter type {self.parameter_types[key]} is not supported')
 
+        # setting the order of the parameters to make sure that the crossover is consistent
+        self.parameter_order = list(enumerate(self.parameter_types.keys()))
         self.mutation_probability = mutation_probability
         self.crossover_probability = crossover_probability
         self.variability = variability
@@ -137,6 +139,7 @@ class GOE:
     def initialize_agents(self):
         # initializing the first set of agents
         self.agents = [self._mutate(self.initial_set, mutation_probability=1) for _ in range(self.num_agents)]
+        self.agents = [self._project(agent) for agent in self.agents]
 
         if self.print_progress:
             print('Initialization done, evaluating initial agents...')
@@ -178,6 +181,11 @@ class GOE:
                 f.write('\n\n')
 
     def run_evolution(self):
+        """
+        Used to run the genetic algorithm.
+        :return: nothing, instead it updates the best agent and the best fitness.
+        """
+
         if self.print_progress:
             print('Starting the genetic algorithm...')
         if self.log_file:
@@ -193,6 +201,7 @@ class GOE:
 
             self.agents = self._reproduce(self.agents, self.fitness)
             self.agents = [self._mutate(agent) for agent in self.agents]
+            self.agents = [self._project(agent) for agent in self.agents]
 
             if self.num_workers > 1:
                 max_workers = min(self.num_workers, self.num_agents)
@@ -240,9 +249,20 @@ class GOE:
 
     @staticmethod
     def _identity_projection(value):
+        """
+        Identity function used when no projection is needed.
+        :param value: value to project.
+        :return: that same value.
+        """
         return value
 
     def _default_mutation(self, parameter_type, value):
+        """
+        Default mutation function used when no mutation is provided.
+        :param parameter_type: type of the value that is being mutated.
+        :param value: value to mutate.
+        :return: mutated value.
+        """
         if parameter_type == int:
             return int(np.random.normal(value, self.variability))
         elif parameter_type == float:
@@ -254,23 +274,39 @@ class GOE:
             return not value
 
     def _mutate(self, agent, mutation_probability=None):
+        """
+        Inner function used to mutate the agent.
+        :param agent: agent to mutate.
+        :param mutation_probability: probability of mutation for each parameter.
+        :return: mutated agent.
+        """
         if mutation_probability is None:
             mutation_probability = self.mutation_probability
+        # in order to avoid changing the original agent, we copy it
         new_agent = agent.copy()
         for key in agent.keys():
             if np.random.rand() < mutation_probability:
                 new_agent[key] = self.parameter_mutations[key](self.parameter_types[key], agent[key])
         return new_agent
 
-    def _crossover(self, agent1, agent2):
+    def _crossover(self, agent1: dict, agent2: dict) -> (dict, dict):
+        """
+        Inner function used to crossover two agents.
+        :param agent1: first agent.
+        :param agent2: second agent.
+        :return: two new agents.
+        """
         new_agent1 = {}
         new_agent2 = {}
 
+        # crossover happens with a certain probability
         if np.random.rand() < self.crossover_probability:
             # selecting the random crossover point
             crossover_point = np.random.randint(0, len(agent1))
 
-            for i, key in enumerate(agent1.keys()):
+            for i, key in self.parameter_order:
+                # before the crossover point, the new agents are the same as the old ones
+                # after the crossover point, the new agents are swapped
                 if i < crossover_point:
                     new_agent1[key] = agent1[key]
                     new_agent2[key] = agent2[key]
@@ -279,12 +315,20 @@ class GOE:
                     new_agent2[key] = agent1[key]
 
         else:
+            # if the crossover does not happen, the new agents are the same as the old ones
             new_agent1 = agent1
             new_agent2 = agent2
 
         return new_agent1, new_agent2
 
     def _scaler(self, values: list) -> list:
+        """
+        Inner function used to scale the fitness of the agents.
+        Makes sure that the fitness is strictly positive, and flips the values in case the genetic algorithm is set
+        to minimize the fitness.
+        :param values: values to scale.
+        :return: scaled values.
+        """
         values = np.array(values)
         # flipping the values, if the genetic algorithm is set to minimize the fitness
         if not self.maximize:
@@ -298,7 +342,13 @@ class GOE:
         values = (values - min_val + scale)
         return values.tolist()
 
-    def _select(self, agents, fitness):
+    def _select(self, agents: list, fitness: list) -> (dict, dict):
+        """
+        Inner function used to select two agents based on their fitness.
+        :param agents: list of all agents.
+        :param fitness: list of their fitness.
+        :return: returns two selected agents.
+        """
         # rescaling the fitness to be positive and to give each fitness a chance to be selected
         fitness = self.scaler(fitness)
         # normalizing the fitness to be in the range [0, 1], to represent probabilities
@@ -312,17 +362,47 @@ class GOE:
         return agents[best_indices[0]], agents[best_indices[1]]
 
     def _evaluate_parallel(self, agents, fitness, indices):
+        """
+        Helper function used to evaluate the fitness of the agents in parallel.
+        :param agents: list of agents to evaluate.
+        :param fitness: list to store fitness values.
+        :param indices: indices of the agents to evaluate.
+        :return: nothing, instead it updates the fitness list.
+        """
         for i in indices:
             fitness[i] = self._evaluate(agents[i])
 
     def _evaluate(self, agent):
+        """
+        Used to evaluate the fitness of the agent.
+        :param agent: agent to evaluate.
+        :return: fitness of the agent.
+        """
+        return self.fitness_function(agent)
+
+    def _project(self, agent):
+        """
+        Inner function used to project the agent to the desired range
+        (by individually projecting each of the components).
+        :param agent: agent to project.
+        :return: projected agent.
+        """
         projected_agent = {key: self.projections[key](value) for key, value in agent.items()}
-        return self.fitness_function(projected_agent)
+        return projected_agent
 
     def _reproduce(self, agents, fitness):
+        """
+        Inner function used to reproduce the population of agents.
+        :param agents: agents to reproduce.
+        :param fitness: the fitness of the agents.
+        :return: new population.
+        """
         new_agents = []
+        # all populations are of the same size
         while len(new_agents) < self.num_agents:
+            # selecting two agents that would reproduce
             agent1, agent2 = self._select(agents, fitness)
+            # creating two new agents by crossing over the selected agents
             new_agent1, new_agent2 = self._crossover(agent1, agent2)
             new_agents.append(new_agent1)
             new_agents.append(new_agent2)
@@ -332,4 +412,8 @@ class GOE:
         return new_agents
 
     def get_best_agent(self) -> (dict, float):
+        """
+        Returns the best agent produced by the genetic algorithm and its fitness.
+        :return: tuple of the form (best_agent, best_fitness)
+        """
         return (self.best_agent, self.best_fitness)

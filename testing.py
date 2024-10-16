@@ -1,7 +1,8 @@
 import numpy as np
 
 from GeneticOptimizationEngine import GOE
-from GeneticOptimizationEngine import fitness_wrapper
+from fitness_wrappers import fitness_wrapper
+import projections as proj
 
 def func1(x: float, y: float):
     return -x**2 - y**2 + 10
