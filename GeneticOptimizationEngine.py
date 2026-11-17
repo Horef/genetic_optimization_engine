@@ -16,6 +16,8 @@ class GOE:
                  initial_set: dict = None,
                  scaler: callable = None,
                  mutation_probability: float = 0.1, crossover_probability: float = 0.1, dr: float = 0.01,
+                 chromosomes: bool = True,
+                 recursive: bool = False,
                  variability: float = 10,
                  num_generations: int = 100, num_agents: int = 100, num_workers: int = -1, 
                  print_progress: bool = False,
@@ -28,8 +30,8 @@ class GOE:
         :param fitness_function: function to evaluate the fitness of the agents. It should accept a single parameter,
             a dictionary of the form {parameter_name: value} for each parameter.
 
-        :param parameter_types: dictionary of form: {parameter_name: type}, where type is one of 'int', 'float', 'bool'
-            or 'choice'. The 'choice' type should be used when the parameter can take a finite and discrete set of values.
+        :param parameter_types: dictionary of form: {parameter_name: type}, where type is one of 'int', 'float', 'bool',
+            'list' or 'choice'. The 'choice' type should be used when the parameter can take a finite and discrete set of values.
             If 'choice' is used, a default mutation function should be provided for that parameter. GOE.choice_mutation
             can be used to create such a function.
 
@@ -57,6 +59,13 @@ class GOE:
         :param crossover_probability: probability of crossover between two chosen agents.
         :param dr: decay rate of the variability of the mutation. The variability is multiplied by (1 - dr) after each
             generation.
+        :param chromosomes: if True, different parameters will be treated as chromosomes, and will be crossed over
+            independently. If False, the agents will be crossed over as a whole.
+            For example, if the agents have one or more of the parameters that are lists, and recursive is set to true
+            the agents will be crossed over each list independently.
+        :param recursive: if True, the agents will be crossed and mutated recursively, meaning that if the agents have
+            one or more of the parameters that are lists (or nested lists), each individual element of the list will be
+            crossed and mutated.
         :param variability: initial variability of the mutation. The mutation is a normal distribution with mean of the
             previous value, and standard deviation of variability * value.
         :param num_generations: number of epochs to run the genetic algorithm
